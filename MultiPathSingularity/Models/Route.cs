@@ -65,7 +65,7 @@ namespace MultiPathSingularity.Models
                 //Ping Packets will be bounced back - Wireguard Packets (and most regular packets) will always be larger than 2 byte
                 if (data.Length == 2)
                 {
-                    _routeUdp.Send(data, data.Length, _loopback);
+                    _routeUdp.Send(data.Take(1).ToArray(), 1, _loopback);
                     continue;
                 }
 
