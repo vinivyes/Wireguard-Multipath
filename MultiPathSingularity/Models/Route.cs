@@ -23,7 +23,10 @@ namespace MultiPathSingularity.Models
                 Task.Run(() => WorkerThread(queue));
             
             if(bckQueue != null)
-                Task.Run(() => UdpThread(bckQueue));
+            {
+                listenerTask = Task.Run(() => UdpThread(bckQueue));
+                _bckQueue = bckQueue;
+            }
 
             //Can route be replaced.
             canRenewRoute = udpClient == null;
@@ -49,6 +52,8 @@ namespace MultiPathSingularity.Models
 
         private UdpClient _routeUdp = new UdpClient(0);
         private bool canRenewRoute = false;
+        private Task listenerTask;
+        private BlockingCollection<byte[]>? _bckQueue;
 
         private readonly object _udpLock = new object();
 
@@ -108,6 +113,12 @@ namespace MultiPathSingularity.Models
                     lock (_udpLock)
                     {
                         client = new UdpClient(0);
+
+                        if (_bckQueue != null)
+                        {
+                            listenerTask.Dispose();
+                            listenerTask = Task.Run(() => UdpThread(_bckQueue));
+                        }
 
                         LastPing = DateTime.UtcNow;
                     }

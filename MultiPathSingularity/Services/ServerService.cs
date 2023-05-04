@@ -37,6 +37,15 @@ namespace MultiPathSingularity.Services
             {
                 Utils.PrintRouteStates(routes.Keys.ToList(), true);
                 Thread.Sleep(1500);
+
+                //Clear routes that have been inactive for more than 5 seconds
+                foreach(Route r in routes.Keys.ToList())
+                {
+                    if((DateTime.UtcNow - r.LastPing).TotalSeconds > 5)
+                    {
+                        routes.Remove(r);
+                    }
+                }
             }
         }
 
