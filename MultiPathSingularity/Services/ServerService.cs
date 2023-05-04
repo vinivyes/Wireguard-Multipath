@@ -85,10 +85,10 @@ namespace MultiPathSingularity.Services
 
                     if(data.Length == 1)
                     {
-                        Route? r = routes.Keys.FirstOrDefault(r => r == _route);
+                        Route? r = routes.Keys.FirstOrDefault(r => r.Equals(_route));
                         if (r == null)
                             continue;
-
+                        
                         r.CalculateLatency(data[0]);
                     }
 
