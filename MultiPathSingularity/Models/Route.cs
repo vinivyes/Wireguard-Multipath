@@ -83,7 +83,7 @@ namespace MultiPathSingularity.Models
         {
             while (true)
             {
-                client.Send(new byte[] { latencyIdx++, 0 });
+                client.Send(new byte[] { latencyIdx++, 0 }, 2, new IPEndPoint(IPAddress, Port));
                 latencyStart = DateTime.UtcNow;
 
                 Thread.Sleep(1500);
