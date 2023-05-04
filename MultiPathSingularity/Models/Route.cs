@@ -32,7 +32,7 @@ namespace MultiPathSingularity.Models
 
         public IPAddress IPAddress { get; set; } = new IPAddress(0);
         public int Port { get; set; }
-        public double Latency { get; set; }
+        public double Latency { get; set; } = 999;
         public DateTime LastPing { get; set; } = DateTime.UtcNow;
 
         private byte latencyIdx = 0;

@@ -36,6 +36,7 @@ namespace MultiPathSingularity.Services
             while (true)
             {
                 Utils.PrintRouteStates(routes.Keys.ToList(), true);
+                Thread.Sleep(1500);
             }
         }
 
