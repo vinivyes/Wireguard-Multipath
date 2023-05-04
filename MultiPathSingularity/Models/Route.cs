@@ -17,18 +17,26 @@ namespace MultiPathSingularity.Models
 
         }
 
-        public Route(BlockingCollection<(byte[], UdpClient?)>? queue, BlockingCollection<byte[]>? bckQueue = null)
+        public Route(BlockingCollection<(byte[], UdpClient?)>? queue, BlockingCollection<byte[]>? bckQueue = null, UdpClient? udpClient = null)
         {
             if (queue != null)
                 Task.Run(() => WorkerThread(queue));
             
             if(bckQueue != null)
                 Task.Run(() => UdpThread(bckQueue));
+
+            //If any task is running, start latency thread
+            if (bckQueue != null || queue != null)
+                Task.Run(() => LatencyThread(udpClient ?? _routeUdp));
         }
 
         public IPAddress IPAddress { get; set; } = new IPAddress(0);
         public int Port { get; set; }
         public double Latency { get; set; }
+        public DateTime LastPing { get; set; } = DateTime.UtcNow;
+
+        private byte latencyIdx = 0;
+        private DateTime latencyStart = DateTime.UtcNow;
 
         private UdpClient _routeUdp = new UdpClient(0);
 
@@ -54,8 +62,41 @@ namespace MultiPathSingularity.Models
                 IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
                 byte[] data = _routeUdp.Receive(ref _loopback);
 
+                //Ping Packets will be bounced back - Wireguard Packets (and most regular packets) will always be larger than 2 byte
+                if (data.Length == 2)
+                {
+                    _routeUdp.Send(data, data.Length, _loopback);
+                    continue;
+                }
+
+                if (data.Length == 1)
+                {
+                    CalculateLatency(data[0]);
+                    continue;
+                }
+
                 bckQueue.Add(data);
             }
+        }
+
+        private void LatencyThread(UdpClient client)
+        {
+            while (true)
+            {
+                client.Send(new byte[] { latencyIdx++, 0 });
+                latencyStart = DateTime.UtcNow;
+
+                Thread.Sleep(1500);
+            }
+        }
+
+        public void CalculateLatency(byte idx)
+        {
+            if (idx != latencyIdx)
+                return;
+
+            Latency = (DateTime.UtcNow - latencyStart).TotalMilliseconds;
+            LastPing = DateTime.UtcNow;
         }
 
         //The following 2 methods (Equals and GetHashCode) ensure that this class can be compared using IPAddress and Port only ignoring everything else.

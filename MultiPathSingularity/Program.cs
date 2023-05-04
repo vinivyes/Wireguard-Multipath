@@ -28,7 +28,7 @@ class Program
                 case "server":
                     if (args.Length < a + 2)
                     {
-                        Console.WriteLine("Server is missing arguments.\nUsage: mpsingularity server<PORT> \"1.2.3.4:1234\"");
+                        Console.WriteLine("Server is missing arguments.\nUsage: mpsingularity server <PORT> \"1.2.3.4:1234\"");
                         Environment.Exit(12);
                     }
                     

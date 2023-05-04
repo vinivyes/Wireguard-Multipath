@@ -48,5 +48,35 @@ namespace MultiPathSingularity.Helpers
                 return null;
             }
         }
+
+        public static void PrintRouteStates(List<Route> routes, bool clear)
+        {
+            if (clear)
+                ClearLastNLines(routes.Count);
+
+            foreach(Route r in routes)
+            {
+                Console.WriteLine($"{r.IPAddress}:{r.Port} - [{r.Latency}] [{r.LastPing}]");
+            }
+        }
+
+
+        private static void ClearLastNLines(int n)
+        {
+            int cursorTop = Console.CursorTop; // Store the current cursor position
+            int newCursorPosition = Math.Max(0, cursorTop - n); // Calculate the new cursor position
+
+            // Set the cursor position to the new line
+            Console.SetCursorPosition(0, newCursorPosition);
+
+            // Clear the desired number of lines by overwriting them with empty spaces
+            for (int i = 0; i < n; i++)
+            {
+                Console.WriteLine(new string(' ', Console.BufferWidth - 1));
+            }
+
+            // Set the cursor position back to where you want to start printing the new content
+            Console.SetCursorPosition(0, newCursorPosition);
+        }
     }
 }

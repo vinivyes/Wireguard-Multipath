@@ -18,7 +18,6 @@ namespace MultiPathSingularity.Services
         private static Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>> routes = new Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>>();
         private static IPEndPoint? _bwEndpoint = null;
         private static UdpClient fwClient = new UdpClient(0);
-        private static UdpClient bckClient = new UdpClient(0);
 
         public static void StartClient(string port, string routesFile)
         {
@@ -49,6 +48,12 @@ namespace MultiPathSingularity.Services
             _ = Task.Run(() =>
                     FwService(int.Parse(port))
                 );
+
+            Utils.PrintRouteStates(routes.Keys.ToList() ?? new List<Route>(), false);
+            while (true)
+            {
+                Utils.PrintRouteStates(routes.Keys.ToList(), true);
+            }
         }
 
         //Received from Client forwarded to MP Server

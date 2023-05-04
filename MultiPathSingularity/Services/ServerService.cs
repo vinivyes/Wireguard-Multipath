@@ -29,6 +29,14 @@ namespace MultiPathSingularity.Services
                     BckService()
                 );
 
+            if (routes == null)
+                routes = new Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>>();
+
+            Utils.PrintRouteStates(routes.Keys.ToList() ?? new List<Route>(), false);
+            while (true)
+            {
+                Utils.PrintRouteStates(routes.Keys.ToList(), true);
+            }
         }
 
         //Received from MP Client to Server
@@ -58,13 +66,29 @@ namespace MultiPathSingularity.Services
                 {
                     IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
                     byte[] data = fwClient.Receive(ref _loopback);
-
+                                            
                     //Any new packet received should be registered to be used a route to send packets back through
                     Route _route = new Route() { IPAddress = _loopback.Address, Port = _loopback.Port };
                     if (!routes.ContainsKey(_route))
                     {
                         BlockingCollection<(byte[], UdpClient?)>? _queue = new BlockingCollection<(byte[], UdpClient?)>();
-                        routes.Add(new Route(_queue) { IPAddress = _loopback.Address, Port = _loopback.Port }, _queue);
+                        routes.Add(new Route(_queue, null, fwClient) { IPAddress = _loopback.Address, Port = _loopback.Port }, _queue);
+                    }
+
+                    //Ping Packets will be bounced back - Wireguard Packets (and most regular packets) will always be larger than 2 byte
+                    if (data.Length == 2)
+                    {
+                        fwClient.Send(data.Take(1).ToArray(), 1, _loopback);
+                        continue;
+                    }
+
+                    if(data.Length == 1)
+                    {
+                        Route? r = routes.Keys.FirstOrDefault(r => r == _route);
+                        if (r == null)
+                            continue;
+
+                        r.CalculateLatency(data[0]);
                     }
 
                     //Use Destination queue to finish delivery of packet to Server
