@@ -26,13 +26,16 @@ namespace MultiPathSingularity.Services
 
 
             _ = Task.Run(() =>
-                    BwService()
+                    BckService()
                 );
+
         }
 
         //Received from MP Client to Server
         private static void FwService(int port, string destination)
         {
+            Console.WriteLine("[Server] FwService is running...");
+
             fwClient = new UdpClient(port);
 
             //Route and queue to send packets received from MP Client directly to Server
@@ -41,39 +44,56 @@ namespace MultiPathSingularity.Services
 
             if(route == null)
             {
-                Console.WriteLine("Missing destination route.\nUsage: mpsingularity server \"1.2.3.4:1234\"");
+                Console.WriteLine("Missing destination route.\nUsage: mpsingularity server <PORT> \"1.2.3.4:1234\"");
                 Environment.Exit(11);
             }
 
             while (true)
             {
-                IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
-                byte[] data = fwClient.Receive(ref _loopback);
+                try
+                {
+                    IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
+                    byte[] data = fwClient.Receive(ref _loopback);
 
-                //Any new packet received should be registered to be used a route to send packets back through
-                Route _route = new Route() { IPAddress = _loopback.Address, Port = _loopback.Port };
-                if (!routes.ContainsKey(_route)) { 
-                    BlockingCollection<(byte[], UdpClient)> _queue = new BlockingCollection<(byte[], UdpClient)>();
-                    routes.Add(new Route(_queue) { IPAddress = _loopback.Address, Port = _loopback.Port }, _queue);
+                    //Any new packet received should be registered to be used a route to send packets back through
+                    Route _route = new Route() { IPAddress = _loopback.Address, Port = _loopback.Port };
+                    if (!routes.ContainsKey(_route))
+                    {
+                        BlockingCollection<(byte[], UdpClient)> _queue = new BlockingCollection<(byte[], UdpClient)>();
+                        routes.Add(new Route(_queue) { IPAddress = _loopback.Address, Port = _loopback.Port }, _queue);
+                    }
+
+                    //Use Destination queue to finish delivery of packet to Server
+                    queue.Add((data, bckClient));
                 }
-
-                //Use Destination queue to finish delivery of packet to Server
-                queue.Add((data, bckClient));
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
             }
         }
 
         //Received from Server sent back to MP Client
-        private static void BwService()
+        private static void BckService()
         {
+            Console.WriteLine("[Server] BckService is running...");
+
             while (true)
             {
-                IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
-                byte[] data = bckClient.Receive(ref _loopback);
-
-                //Send packet back through all routes that have connected to server
-                foreach (var route in routes)
+                try
                 {
-                    route.Value.Add((data, bckClient));
+                    IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
+                    byte[] data = bckClient.Receive(ref _loopback);
+
+                    //Send packet back through all routes that have connected to server
+                    foreach (var route in routes)
+                    {
+                        route.Value.Add((data, bckClient));
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
                 }
             }
         }

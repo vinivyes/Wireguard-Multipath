@@ -24,7 +24,7 @@ namespace MultiPathSingularity.Services
 
             if (!File.Exists(routesFile))
             {
-                Console.WriteLine("Missing routes file.\nUsage: mpsingularity client \"./routes.txt\"\n\nThe contents of 'routes.txt' should look as follows:\n1.2.3.4:1234\n2.3.4.5:2345");
+                Console.WriteLine("Missing routes file.\nUsage: mpsingularity client <PORT> \"./routes.txt\"\n\nThe contents of 'routes.txt' should look as follows:\n1.2.3.4:1234\n2.3.4.5:2345");
                 Environment.Exit(10);
             }
             else
@@ -52,17 +52,25 @@ namespace MultiPathSingularity.Services
         //Received from Client forwarded to MP Server
         private static void FwService(int port)
         {
+            Console.WriteLine("[Client] FwService is running...");
             fwClient = new UdpClient(port);
 
             while (true)
             {
-                byte[] data = fwClient.Receive(ref _bwEndpoint);
-
-                //Add data to the queue of all routes
-                foreach(var route in routes)
+                try
                 {
-                    //Forward the item using the UdpClient that will be expecting a response back
-                    route.Value.Add((data, bckClient));
+                    byte[] data = fwClient.Receive(ref _bwEndpoint);
+
+                    //Add data to the queue of all routes
+                    foreach (var route in routes)
+                    {
+                        //Forward the item using the UdpClient that will be expecting a response back
+                        route.Value.Add((data, bckClient));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
                 }
             }
         }
@@ -70,14 +78,23 @@ namespace MultiPathSingularity.Services
         //Received from MP Server back to Client
         private static void BckService()
         {
+            Console.WriteLine("[Client] BckService is running...");
             while (true)
             {
-                IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
-                byte[] data = bckClient.Receive(ref _loopback);
+                try
+                {
 
-                //Send received packets back to client using UdpClient that receives packets
-                if (_bwEndpoint != null)
-                    fwClient.Send(data);
+                    IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
+                    byte[] data = bckClient.Receive(ref _loopback);
+
+                    //Send received packets back to client using UdpClient that receives packets
+                    if (_bwEndpoint != null)
+                        fwClient.Send(data);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
             }
         }
     }
