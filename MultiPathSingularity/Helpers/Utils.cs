@@ -52,9 +52,10 @@ namespace MultiPathSingularity.Helpers
         public static void PrintRouteStates(List<Route> routes, bool clear)
         {
             if (clear)
-                ClearLastNLines(routes.Count);
+                ClearLastNLines(routes.Count + 1);
 
-            foreach(Route r in routes)
+            Console.WriteLine($"Routes: {routes.Count}");
+            foreach (Route r in routes)
             {
                 Console.WriteLine($"{r.IPAddress}:{r.Port} - [{r.Latency}] [{r.LastPing}]");
             }

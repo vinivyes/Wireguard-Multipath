@@ -25,9 +25,18 @@ namespace MultiPathSingularity.Models
             if(bckQueue != null)
                 Task.Run(() => UdpThread(bckQueue));
 
+            //Can route be replaced.
+            canRenewRoute = udpClient == null;
+
             //If any task is running, start latency thread
             if (bckQueue != null || queue != null)
-                Task.Run(() => LatencyThread(udpClient ?? _routeUdp));
+            {
+                if(udpClient != null)
+                    Task.Run(() => LatencyThread(ref udpClient));
+                else
+                    Task.Run(() => LatencyThread(ref _routeUdp));
+            }
+
         }
 
         public IPAddress IPAddress { get; set; } = new IPAddress(0);
@@ -39,6 +48,9 @@ namespace MultiPathSingularity.Models
         private DateTime latencyStart = DateTime.UtcNow;
 
         private UdpClient _routeUdp = new UdpClient(0);
+        private bool canRenewRoute = false;
+
+        private readonly object _udpLock = new object();
 
         private void WorkerThread(BlockingCollection<(byte[], UdpClient?)> queue)
         {
@@ -50,8 +62,11 @@ namespace MultiPathSingularity.Models
                 // Wait for data to become available
                 var (data, udp) = queue.Take();
 
-                //Send through specified client or through route udp
-                (udp ?? _routeUdp).Send(data, data.Length, new IPEndPoint(IPAddress, Port));
+                lock (_udpLock)
+                {
+                    //Send through specified client or through route udp
+                    (udp ?? _routeUdp).Send(data, data.Length, new IPEndPoint(IPAddress, Port));
+                }
             }
         }
 
@@ -79,7 +94,7 @@ namespace MultiPathSingularity.Models
             }
         }
 
-        private void LatencyThread(UdpClient client)
+        private void LatencyThread(ref UdpClient client)
         {
             while (true)
             {
@@ -87,6 +102,16 @@ namespace MultiPathSingularity.Models
                 latencyStart = DateTime.UtcNow;
 
                 Thread.Sleep(1500);
+
+                if(canRenewRoute && (DateTime.UtcNow - LastPing).TotalSeconds > 15)
+                {
+                    lock (_udpLock)
+                    {
+                        client = new UdpClient(0);
+
+                        LastPing = DateTime.UtcNow;
+                    }
+                }
             }
         }
 
