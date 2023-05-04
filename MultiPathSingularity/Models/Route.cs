@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MultiPathSingularity.Services;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,16 +17,22 @@ namespace MultiPathSingularity.Models
 
         }
 
-        public Route(BlockingCollection<(byte[], UdpClient)> queue)
+        public Route(BlockingCollection<(byte[], UdpClient?)>? queue, BlockingCollection<byte[]>? bckQueue = null)
         {
-            Task.Run(() => WorkerThread(queue));
+            if (queue != null)
+                Task.Run(() => WorkerThread(queue));
+            
+            if(bckQueue != null)
+                Task.Run(() => UdpThread(bckQueue));
         }
 
         public IPAddress IPAddress { get; set; } = new IPAddress(0);
         public int Port { get; set; }
         public double Latency { get; set; }
 
-        private void WorkerThread(BlockingCollection<(byte[], UdpClient)> queue)
+        private UdpClient _routeUdp = new UdpClient(0);
+
+        private void WorkerThread(BlockingCollection<(byte[], UdpClient?)> queue)
         {
             if (IPAddress == null)
                 return;
@@ -35,12 +42,24 @@ namespace MultiPathSingularity.Models
                 // Wait for data to become available
                 var (data, udp) = queue.Take();
 
-                udp.Send(data, data.Length, new IPEndPoint(IPAddress, Port));
+                //Send through specified client or through route udp
+                (udp ?? _routeUdp).Send(data, data.Length, new IPEndPoint(IPAddress, Port));
+            }
+        }
+
+        private void UdpThread(BlockingCollection<byte[]> bckQueue)
+        {
+            while (true)
+            {
+                IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
+                byte[] data = _routeUdp.Receive(ref _loopback);
+
+                bckQueue.Add(data);
             }
         }
 
         //The following 2 methods (Equals and GetHashCode) ensure that this class can be compared using IPAddress and Port only ignoring everything else.
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || GetType() != obj.GetType())
                 return false;

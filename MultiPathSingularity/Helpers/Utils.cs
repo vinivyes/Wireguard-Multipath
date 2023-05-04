@@ -13,7 +13,7 @@ namespace MultiPathSingularity.Helpers
 {
     public static class Utils
     {
-        public static Route? ReadRoute(string route, BlockingCollection<(byte[], UdpClient)> queue)
+        public static Route? ReadRoute(string route, BlockingCollection<(byte[], UdpClient?)>? queue, BlockingCollection<byte[]>? _bckQueue = null)
         {
             string ipAddressPattern = @"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
             string portPattern = @"(?<=:)([0-9]{1,5})";
@@ -29,9 +29,12 @@ namespace MultiPathSingularity.Helpers
                 string ipAddress = ipAddressMatch.Value;
                 int port = int.Parse(portMatch.Value);
 
+                if (queue == null)
+                    return null;
+
                 if (port >= 0 && port <= 65535)
                 {
-                    return new Route(queue) { IPAddress = IPAddress.Parse(ipAddress), Port = port };
+                    return new Route(queue ?? new BlockingCollection<(byte[], UdpClient?)>(), _bckQueue) { IPAddress = IPAddress.Parse(ipAddress), Port = port };
                 }
                 else
                 {

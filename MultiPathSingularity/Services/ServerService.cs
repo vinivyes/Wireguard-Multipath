@@ -13,12 +13,12 @@ namespace MultiPathSingularity.Services
 {
     public static class ServerService
     {
-        private static Dictionary<Route, BlockingCollection<(byte[], UdpClient)>> routes = new Dictionary<Route, BlockingCollection<(byte[], UdpClient)>>();
+        private static Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>>? routes = new Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>>();
         private static UdpClient fwClient = new UdpClient(0);
         private static UdpClient bckClient = new UdpClient(0);
         public static void StartServer(string port, string destination)
         {
-            Console.WriteLine("Starting server...");
+            Console.WriteLine($"Starting server on port {port}... ");
 
             _ = Task.Run(() =>
                     FwService(int.Parse(port), destination)
@@ -39,7 +39,7 @@ namespace MultiPathSingularity.Services
             fwClient = new UdpClient(port);
 
             //Route and queue to send packets received from MP Client directly to Server
-            BlockingCollection<(byte[], UdpClient)> queue = new BlockingCollection<(byte[], UdpClient)>();
+            BlockingCollection<(byte[], UdpClient?)> queue = new BlockingCollection<(byte[], UdpClient?)>();
             Route? route = Utils.ReadRoute(destination, queue);
 
             if(route == null)
@@ -47,6 +47,10 @@ namespace MultiPathSingularity.Services
                 Console.WriteLine("Missing destination route.\nUsage: mpsingularity server <PORT> \"1.2.3.4:1234\"");
                 Environment.Exit(11);
             }
+
+            //Initialize routes - Error check for null
+            if (routes == null)
+                routes = new Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>>();
 
             while (true)
             {
@@ -59,7 +63,7 @@ namespace MultiPathSingularity.Services
                     Route _route = new Route() { IPAddress = _loopback.Address, Port = _loopback.Port };
                     if (!routes.ContainsKey(_route))
                     {
-                        BlockingCollection<(byte[], UdpClient)> _queue = new BlockingCollection<(byte[], UdpClient)>();
+                        BlockingCollection<(byte[], UdpClient?)>? _queue = new BlockingCollection<(byte[], UdpClient?)>();
                         routes.Add(new Route(_queue) { IPAddress = _loopback.Address, Port = _loopback.Port }, _queue);
                     }
 
@@ -78,6 +82,10 @@ namespace MultiPathSingularity.Services
         {
             Console.WriteLine("[Server] BckService is running...");
 
+            //Initialize routes - Error check for null
+            if (routes == null)
+                routes = new Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>>();
+
             while (true)
             {
                 try
@@ -88,7 +96,7 @@ namespace MultiPathSingularity.Services
                     //Send packet back through all routes that have connected to server
                     foreach (var route in routes)
                     {
-                        route.Value.Add((data, bckClient));
+                        route.Value.Add((data, fwClient));
                     }
                 }
                 catch(Exception ex)

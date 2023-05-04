@@ -1,6 +1,7 @@
 ﻿using MultiPathSingularity.Helpers;
 using MultiPathSingularity.Models;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,14 +14,15 @@ namespace MultiPathSingularity.Services
 {
     public static class ClientService
     {
-        private static Dictionary<Route, BlockingCollection<(byte[], UdpClient)>> routes = new Dictionary<Route, BlockingCollection<(byte[], UdpClient)>>();
+        public static BlockingCollection<byte[]> bckQueue = new BlockingCollection<byte[]>();
+        private static Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>> routes = new Dictionary<Route, BlockingCollection<(byte[], UdpClient?)>>();
         private static IPEndPoint? _bwEndpoint = null;
         private static UdpClient fwClient = new UdpClient(0);
         private static UdpClient bckClient = new UdpClient(0);
 
         public static void StartClient(string port, string routesFile)
         {
-            Console.WriteLine("Starting client...");
+            Console.WriteLine($"Starting client on port {port}...");
 
             if (!File.Exists(routesFile))
             {
@@ -32,8 +34,8 @@ namespace MultiPathSingularity.Services
                 string[] _routes = File.ReadAllLines(routesFile);
                 foreach (string route in _routes)
                 {
-                    BlockingCollection<(byte[], UdpClient)> queue = new BlockingCollection<(byte[], UdpClient)>();
-                    Route? _route = Utils.ReadRoute(route, queue);
+                    BlockingCollection<(byte[], UdpClient?)> queue = new BlockingCollection<(byte[], UdpClient?)>();
+                    Route? _route = Utils.ReadRoute(route, queue, bckQueue);
 
                     if (_route != null)
                         routes.Add(_route, queue);
@@ -65,7 +67,7 @@ namespace MultiPathSingularity.Services
                     foreach (var route in routes)
                     {
                         //Forward the item using the UdpClient that will be expecting a response back
-                        route.Value.Add((data, bckClient));
+                        route.Value.Add((data, null));
                     }
                 }
                 catch (Exception ex)
@@ -83,13 +85,12 @@ namespace MultiPathSingularity.Services
             {
                 try
                 {
-
-                    IPEndPoint _loopback = new IPEndPoint(IPAddress.Any, 0);
-                    byte[] data = bckClient.Receive(ref _loopback);
+                    // Wait for data to become available
+                    var data = bckQueue.Take();
 
                     //Send received packets back to client using UdpClient that receives packets
                     if (_bwEndpoint != null)
-                        fwClient.Send(data);
+                        fwClient.Send(data, data.Length, _bwEndpoint);
                 }
                 catch (Exception ex)
                 {
