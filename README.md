@@ -5,11 +5,11 @@ This repository houses source code to the Multipath application used by Ping Tic
 This application runs on both ends of a Wireguard tunnel (Server and Client).
 ### Client-side:
   - Receives packets locally from Wireguard (Usually 127.0.0.1:<'Multipath Listen Port'>)
-  - Duplicates packets received and sends them to every route (<IP>:<Port>)
+  - Duplicates packets received and sends them to every route (<'IP'>:<'Port'>)
   - Any packets received back from these routes are returned to Wireguard locally
 ### Server-side
   - Listens for any incoming packets, once a new packet is detected, a connection is established to allow packets to be sent back.
-  - Forwards all received packets to the specified <IP>:<Port>, usually locally to the Wireguard server instance.
+  - Forwards all received packets to the specified <'IP'>:<'Port'>, usually locally to the Wireguard server instance.
   - Any packets received back from Wireguard are then forwarded back through each route established by the client side.
 
 **Note:** The application does not de-duplicate packets, it relies on the de-duplication feature that comes built-in on Wireguard. If using this for different purposes, you must implement de-duplication in case the final application does not support it.
