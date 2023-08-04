@@ -51,8 +51,13 @@ namespace MultiPathSingularity.Helpers
 
         public static void PrintRouteStates(List<Route> routes, bool clear)
         {
-            if (clear)
-                Console.Clear();
+            //Some instances do not allow clearing console, continue outputting directly.
+            try
+            {
+                if (clear)
+                    Console.Clear();
+            }
+            catch { }
 
             Console.WriteLine($"Routes: {routes.Count}");
             foreach (Route r in routes)
