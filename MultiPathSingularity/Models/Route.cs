@@ -55,6 +55,8 @@ namespace MultiPathSingularity.Models
         private Task listenerTask;
         private BlockingCollection<byte[]>? _bckQueue;
 
+        public bool active { get; set; } = false;
+
         private readonly object _udpLock = new object();
 
         private void WorkerThread(BlockingCollection<(byte[], UdpClient?)> queue)
@@ -64,6 +66,13 @@ namespace MultiPathSingularity.Models
 
             while (true)
             {
+                if (!active)
+                {
+                    Thread.Sleep(100);
+                    continue;
+                }
+
+
                 // Wait for data to become available
                 var (data, udp) = queue.Take();
 
@@ -83,6 +92,13 @@ namespace MultiPathSingularity.Models
                 byte[] data = _routeUdp.Receive(ref _loopback);
 
                 //Ping Packets will be bounced back - Wireguard Packets (and most regular packets) will always be larger than 2 byte
+                if (data.Length == 3)
+                {
+                    SetRouteActive(data[2]);
+                    continue;
+                }
+
+                //Ping Packets will be bounced back - Wireguard Packets (and most regular packets) will always be larger than 2 byte
                 if (data.Length == 2)
                 {
                     _routeUdp.Send(data.Take(1).ToArray(), 1, _loopback);
@@ -96,6 +112,37 @@ namespace MultiPathSingularity.Models
                 }
 
                 bckQueue.Add(data);
+            }
+        }
+
+        public void SetActive(bool _active)
+        {
+            active = _active;
+
+            switch(active) { 
+                case true:
+                    _routeUdp.Send(new byte[] { 0, 0, 1 }, 2, new IPEndPoint(IPAddress, Port));
+                    Console.WriteLine($"Disabling route: {IPAddress}:{Port}");
+                    break;
+                case false:
+                    _routeUdp.Send(new byte[] { 0, 0, 0 }, 2, new IPEndPoint(IPAddress, Port));
+                    Console.WriteLine($"Enabling route: {IPAddress}:{Port}");
+                    break;
+            }
+        }
+
+        private void SetRouteActive(byte a)
+        {
+            switch(a)
+            {
+                case 0:
+                    active = false;
+                    Console.WriteLine($"Disabling route: {IPAddress}:{Port}");
+                    break;
+                case 1: 
+                    active = true;
+                    Console.WriteLine($"Enabling route: {IPAddress}:{Port}");
+                    break;
             }
         }
 

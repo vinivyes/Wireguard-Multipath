@@ -62,7 +62,7 @@ namespace MultiPathSingularity.Helpers
             Console.WriteLine($"Routes: {routes.Count}");
             foreach (Route r in routes)
             {
-                Console.WriteLine($"{r.IPAddress}:{r.Port} - [{r.Latency}] [{r.LastPing}]");
+                Console.WriteLine($"{r.IPAddress}:{r.Port} - [{r.Latency}] [{r.LastPing}] [Active: {r.active}]");
             }
         }
     }
