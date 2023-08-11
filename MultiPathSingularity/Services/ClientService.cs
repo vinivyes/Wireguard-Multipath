@@ -77,11 +77,11 @@ namespace MultiPathSingularity.Services
             {
                 if (idx < maxRoutes)
                 {
-                    route.active = true;
+                    route.SetActive(true);
                 }
                 else
                 {
-                    route.active = false;
+                    route.SetActive(false);
                 }
                 idx++;
             }

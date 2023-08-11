@@ -85,6 +85,18 @@ namespace MultiPathSingularity.Services
                         routes.Add(new Route(_queue, null, fwClient) { IPAddress = _loopback.Address, Port = _loopback.Port }, _queue);
                     }
 
+                    //Whenever clients enables/disables a route, a packet with 3 bytes is sent to this route letting the route know what state it should take
+                    if (data.Length == 3)
+                    {
+                        Route? r = routes.Keys.FirstOrDefault(r => r.Equals(_route));
+                        if (r == null)
+                            continue;
+
+                        r.SetRouteActive(data[2]);
+
+                        continue;
+                    }
+
                     //Ping Packets will be bounced back - Wireguard Packets (and most regular packets) will always be larger than 2 byte
                     if (data.Length == 2)
                     {

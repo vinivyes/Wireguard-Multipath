@@ -31,6 +31,9 @@ namespace MultiPathSingularity.Models
             //Can route be replaced.
             canRenewRoute = udpClient == null;
 
+            //Save UDP Client to activate/deactivate routes
+            _udpClient = udpClient;
+
             //If any task is running, start latency thread
             if (bckQueue != null || queue != null)
             {
@@ -51,6 +54,7 @@ namespace MultiPathSingularity.Models
         private DateTime latencyStart = DateTime.UtcNow;
 
         private UdpClient _routeUdp = new UdpClient(0);
+        private UdpClient _udpClient;
         private bool canRenewRoute = false;
         private Task listenerTask;
         private BlockingCollection<byte[]>? _bckQueue;
@@ -92,13 +96,6 @@ namespace MultiPathSingularity.Models
                 byte[] data = _routeUdp.Receive(ref _loopback);
 
                 //Ping Packets will be bounced back - Wireguard Packets (and most regular packets) will always be larger than 2 byte
-                if (data.Length == 3)
-                {
-                    SetRouteActive(data[2]);
-                    continue;
-                }
-
-                //Ping Packets will be bounced back - Wireguard Packets (and most regular packets) will always be larger than 2 byte
                 if (data.Length == 2)
                 {
                     _routeUdp.Send(data.Take(1).ToArray(), 1, _loopback);
@@ -119,19 +116,20 @@ namespace MultiPathSingularity.Models
         {
             active = _active;
 
+
             switch(active) { 
                 case true:
-                    _routeUdp.Send(new byte[] { 0, 0, 1 }, 2, new IPEndPoint(IPAddress, Port));
+                    _routeUdp.Send(new byte[] { 0, 0, 1 }, 3, new IPEndPoint(IPAddress, Port));
                     Console.WriteLine($"Disabling route: {IPAddress}:{Port}");
                     break;
                 case false:
-                    _routeUdp.Send(new byte[] { 0, 0, 0 }, 2, new IPEndPoint(IPAddress, Port));
+                    _routeUdp.Send(new byte[] { 0, 0, 0 }, 3, new IPEndPoint(IPAddress, Port));
                     Console.WriteLine($"Enabling route: {IPAddress}:{Port}");
                     break;
             }
         }
 
-        private void SetRouteActive(byte a)
+        public void SetRouteActive(byte a)
         {
             switch(a)
             {
@@ -151,6 +149,11 @@ namespace MultiPathSingularity.Models
             while (true)
             {
                 client.Send(new byte[] { ++latencyIdx, 0 }, 2, new IPEndPoint(IPAddress, Port));
+
+                if(_udpClient is null) //If running as a client
+                    client.Send(new byte[] { 0, 0, (active ? (byte)1 : (byte)0) }, 3, new IPEndPoint(IPAddress, Port)); //Keeps route state synchronized on server
+
+
                 latencyStart = DateTime.UtcNow;
 
                 Thread.Sleep(1500);
