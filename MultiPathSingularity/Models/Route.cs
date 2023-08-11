@@ -55,7 +55,7 @@ namespace MultiPathSingularity.Models
         private Task listenerTask;
         private BlockingCollection<byte[]>? _bckQueue;
 
-        public bool active { get; set; } = false;
+        public bool active { get; set; } = true;
 
         private readonly object _udpLock = new object();
 
